@@ -1,14 +1,22 @@
 sudo: false
+
 language: go
-go: go1.5
-install:
-  - go get -v golang.org/x/tools/cmd/cover
-  - go get -t github.com/smartystreets/goconvey
-  - go get github.com/jacobsa/oglematchers
-  - go get -u golang.org/x/tools/cmd/vet
+go:
+  - 1.7
+
+before_install:
+  - go get github.com/mattn/goveralls
+  - go get golang.org/x/tools/cmd/cover
   - go get -u github.com/golang/lint/golint
+  - go get -u github.com/bradleyfalzon/apicompat/cmd/apicompat
+
 script:
+  - go vet -x ./...
+  - test -z "$(golint ./...)"
   - test -z "$(gofmt -s -l -w . | tee /dev/stderr)"
-  - test -z "$(golint . | tee /dev/stderr)"
-  - go vet -v .
-  - go test -v -cover  ./...
+  - go test -v  ./...
+  - go test -covermode=count -coverprofile=profile.cov
+  - test -z "$(apicompat -before ${TRAVIS_COMMIT_RANGE%...*} -after ${TRAVIS_COMMIT_RANGE#*...} ./... | tee /dev/stderr)"
+
+after_script:
+  - goveralls -coverprofile=profile.cov -service=travis-ci
